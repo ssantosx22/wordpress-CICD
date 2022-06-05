@@ -1,7 +1,4 @@
 provider "aws" {}
-  #region  = var.region
-  #profile = var.profile
-#}
 
 terraform {
   required_version = "~> 1.0.0"

@@ -55,7 +55,6 @@ data "aws_ami" "web" {
 resource "aws_instance" "main" {
   count = var.instance_count
   ami   = data.aws_ami.web.id
-  #ami = var.ami
   instance_type               = var.instance_type
   associate_public_ip_address = var.associate_public_ip_address
   key_name                    = aws_key_pair.generated_key.key_name

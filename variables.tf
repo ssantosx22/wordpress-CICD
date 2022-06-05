@@ -1,17 +1,3 @@
-#variable "region" {
-#  type        = string
-#  description = "Região para provisionar os recursos"
-#}
-
-#variable "profile" {
-#  type        = string
-#  description = "Perfil com permissões para provisionar os recursos da AWS"
-#}
-
-#variable "ami" {
-#  description = "ID da AMI usada para provisionar a instância"
-#}
-
 variable "name" {
   description = "Nome da instância"
 }

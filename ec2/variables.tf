@@ -11,10 +11,6 @@ variable "vpc_id" {
   description = "VPC id da instancia"
 }
 
-#variable "ami" {
-#  description = "ID da AMI usada para provisionar a instância"
-#}
-
 variable "subnet_id" {
   description = "Subnet da instancia"
 }

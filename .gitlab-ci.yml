@@ -1,0 +1,111 @@
+# Default output file for Terraform plan
+variables:
+  PLAN: plan.tfplan
+  JSON_PLAN_FILE: tfplan.json
+  STATE_APPLY: to.tfstate
+  PACKER_OUTPUT: image.log
+cache:
+  paths:
+    - .terraform
+
+before_script:
+  - shopt -s expand_aliases
+  - alias convert_report="jq -r '([.resource_changes[]?.change.actions?]|flatten)|{\"create\":(map(select(.==\"create\"))|length),\"update\":(map(select(.==\"update\"))|length),\"delete\":(map(select(.==\"delete\"))|length)}'"
+
+stages:
+  - validate
+  - build
+  - test
+  - prod
+
+validate:
+  stage: validate
+  environment:
+    name: dev
+  script:
+    - echo $AWS_ACCESS_KEY_ID
+    - echo $AWS_SECRET_ACCESS_KEY
+    - echo $AWS_DEFAULT_REGION
+    - echo $CI_JOB_ID
+    - export
+    - terraform --version
+    - packer --version
+    - ansible --version
+    - echo "-------------- Validating Packer Code --------------"
+    - packer validate ami_aws.json
+    - echo "------------------------- Terraform validate Init -----------------------"
+    - terraform init
+    - terraform validate
+
+Test_Image:
+  stage: build
+  environment:
+    name: dev
+  only:
+    - dev
+  script:
+    - ansible --version
+    - packer build ami_aws.json | tee -a $PACKER_OUTPUT
+  artifacts:
+    paths:
+      - $PACKER_OUTPUT
+
+plan:
+  stage: build
+  environment:
+    name: dev
+  only:
+    - dev
+  script:
+    - echo "Building..... terraform plan"
+    - terraform init
+    - terraform plan -var-file="vars.tfvars" -state=$STATE_APPLY -out=$PLAN 
+    - terraform show --json $PLAN | convert_report > $JSON_PLAN_FILE
+  artifacts:
+    paths:                                                                                                                                                                                                                                                                                                                                                                        
+      - $PLAN
+      - $STATE_APPLY
+    reports:
+      terraform: $JSON_PLAN_FILE
+
+Packer_pro:
+  stage: build
+  environment:
+    name: prd
+  only:
+    - prd
+  script:
+    - pwd
+    - ansible --version
+    - packer build ami_aws.json
+
+apply test:
+  stage: test
+  environment:
+    name: dev
+  script:
+    - terraform init
+    - terraform apply -state-out=$STATE_APPLY -input=false $PLAN
+  artifacts:
+    paths:
+      - $STATE_APPLY
+  dependencies:
+    - plan
+  only:
+   - dev
+
+apply:
+  stage: prod
+  environment:
+    name: prd
+  script:
+    - echo ".....in Production"
+    - terraform init
+    - terraform plan -var-file="vars.tfvars" -state=$STATE -out=$PLAN
+    - terraform apply -state-out=$STATE_APPLY -input=false $PLAN
+  artifacts:
+    paths:
+      - $STATE_APPLY
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
